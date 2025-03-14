@@ -35,6 +35,7 @@ using System.IO;
 using Nistec.Serialization;
 using System.Collections.Concurrent;
 using System.Collections.Specialized;
+using System.Data.SqlClient;
 #pragma warning disable CS1591
 namespace Nistec.Data.Entities
 {
@@ -65,10 +66,10 @@ namespace Nistec.Data.Entities
 
 
 
-        public static int Update<T>(this EntityContext<T> context, T newEntity, Func<UpdateCommandType,EntityValidator> validate) where T : IEntityItem
+        public static int Update<T>(this EntityContext<T> context, T newEntity, Func<UpdateCommandType, EntityValidator> validate) where T : IEntityItem
         {
             T current = context.Entity;
-            
+
             var validator = validate == null ? null : validate(UpdateCommandType.Update);
             if (validator != null && !validator.IsValid)
             {
@@ -107,7 +108,7 @@ namespace Nistec.Data.Entities
 
         #region Entity Extension
 
-         public static Dictionary<string, T> CreateEntityList<T>(DataTable dt)
+        public static Dictionary<string, T> CreateEntityList<T>(DataTable dt)
         {
 
             bool isGR = (typeof(T) == typeof(GenericEntity));
@@ -128,11 +129,11 @@ namespace Nistec.Data.Entities
             else
             {
                 //EntityKeys entityKeys = EntityKeys.BuildKeys<T>();
-               
+
                 foreach (var gr in records)
                 {
                     T item = ActivatorUtil.CreateInstance<T>();
-                    
+
                     //string key = entityKeys.CreateEntityPrimaryKey(gr);
                     //if (!string.IsNullOrEmpty(key))
                     //{
@@ -299,7 +300,7 @@ namespace Nistec.Data.Entities
         }
 
         #endregion
-    
+
         #region EntityDictionary
 
         public static IDictionary CreateEntityList(IEntity entity, DataFilter filter, Action<Exception> onError)
@@ -442,7 +443,7 @@ namespace Nistec.Data.Entities
                 {
                     throw new IOException("WriteStream.stream can not write");
                 }
-                entity.EntityWrite(stream,null);
+                entity.EntityWrite(stream, null);
             }
             catch (Exception)
             {
@@ -463,7 +464,7 @@ namespace Nistec.Data.Entities
                 {
                     throw new IOException("ReadStream.stream can not read");
                 }
-                entity.EntityRead(stream,null);
+                entity.EntityRead(stream, null);
 
             }
             catch (Exception)
@@ -472,18 +473,178 @@ namespace Nistec.Data.Entities
         }
         #endregion
 
-        /// <summary>
-        /// EntityToNameValue
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="instance"></param>
-        /// <param name="Exclude"></param>
-        /// <returns></returns>
-        /*
-        var entity = EntityExtension.Create<QreminderRegistry>(Request.Form);
-        entity.AccountId = su.AccountId; 
-          
-         * */
+        #region ToSqlParameters
+
+        public static IList<SqlParameter> ToSqlParameters<T>(this T instance) where T : IEntityItem
+        {
+            List<SqlParameter> parameters = new List<SqlParameter>();
+
+            var props = DataProperties.GetEntityProperties(typeof(T));
+            //props = props.Where(p => p.Attribute.Order > 0).OrderBy(p => p.Attribute.Order);
+
+            foreach (var pa in props)
+            {
+                PropertyInfo property = pa.Property;
+                EntityPropertyAttribute attr = pa.Attribute;
+                if (attr != null)
+                {
+                    if (attr.ParameterType == EntityPropertyType.NA || attr.ParameterType == EntityPropertyType.View)
+                        continue;
+
+                    string key = attr.GetParamName(pa.Property.Name);//attr.IsColumnDefined ? attr.Column : pa.Property.Name;
+                    object val = property.GetValue(instance, null);
+                    parameters.Add(new SqlParameter(key, val));
+                }
+                else
+                {
+                    parameters.Add(new SqlParameter(property.Name, property.GetValue(instance, null)));
+                }
+            }
+            return parameters;
+        }
+
+        public static IList<SqlParameter> ToSqlParameters<T>(this T instance, params string[] Exclude) where T : IEntityItem
+        {
+            List<SqlParameter> parameters = new List<SqlParameter>();
+
+            var props = DataProperties.GetEntityProperties(typeof(T));
+            //props = props.Where(p => p.Attribute.Order > 0).OrderBy(p => p.Attribute.Order);
+
+            foreach (var pa in props)
+            {
+                PropertyInfo property = pa.Property;
+                EntityPropertyAttribute attr = pa.Attribute;
+                if (!Exclude.Contains(property.Name))
+                {
+                    if (attr != null)
+                    {
+                        if (attr.ParameterType == EntityPropertyType.NA || attr.ParameterType == EntityPropertyType.View)
+                            continue;
+
+                        string key = attr.GetParamName(pa.Property.Name);//attr.IsColumnDefined ? attr.Column : pa.Property.Name;
+                        object val = property.GetValue(instance, null);
+                        parameters.Add(new SqlParameter(key, val));
+                    }
+                    else
+                    {
+                        parameters.Add(new SqlParameter(property.Name, property.GetValue(instance, null)));
+                    }
+                }
+            }
+            return parameters;
+        }
+
+        public static IList<SqlParameter> ToSqlParameters<T>(this T instance, bool addReturnValue) where T : IEntityItem
+        {
+            var parameters = ToSqlParameters(instance);
+            if (addReturnValue)
+            {
+                DataParameter.AddReturnValueParameter(parameters);
+            }
+            return parameters;
+        }
+
+        public static IList<SqlParameter> ToSqlParameters<T>(this T instance,bool addReturnValue, params object[] keyValueParameters) where T : IEntityItem
+        {
+            var parameters = ToSqlParameters(instance);
+            DataParameter.AddToSqlList(parameters,keyValueParameters);
+            if (addReturnValue)
+            {
+                DataParameter.AddReturnValueParameter(parameters);
+            }
+            return parameters;
+        }
+
+        public static IList<SqlParameter> ToSqlParameters<T>(this T instance, List<string> refList, params object[] keyValueParameters) where T : IEntityItem
+        {
+            var parameters = ToSqlParameters(instance,false, keyValueParameters);
+            foreach (var item in parameters)
+            {
+                if (refList.Contains(item.ParameterName))
+                {
+                    item.Direction = ParameterDirection.InputOutput;
+                }
+            }
+            return parameters;
+        }
+
+        public static Dictionary<string, object> ToDictionary<T>(this IEntityItem entity, params object[] keyValueParameters)
+        {
+            bool enableAttributeColumn = false;
+            Dictionary<string, object> args = new Dictionary<string, object>();
+            T instance = ActivatorUtil.CreateInstance<T>();
+
+            var props = Nistec.Data.DataProperties.GetEntityProperties(typeof(T), true);
+            foreach (var pa in props)
+            {
+                PropertyInfo property = pa.Property;
+                EntityPropertyAttribute attr = pa.Attribute;
+
+                if (!property.CanRead)
+                {
+                    continue;
+                }
+
+                if (attr != null)
+                {
+                    if (attr.ParameterType == EntityPropertyType.NA)
+                    {
+                        continue;
+                    }
+                    if (attr.ParameterType == EntityPropertyType.View)
+                    {
+                        continue;
+                    }
+                    if (property.CanWrite)
+                    {
+
+                        string field = attr.GetColumn(property.Name, enableAttributeColumn);
+                        //if (attr.ParameterType == EntityPropertyType.Optional)
+                        //{
+                        //    Console.WriteLine("Optional");
+                        //}
+
+                        object value = property.GetValue(instance, null);// form[field];
+                        if (value == null)
+                        {
+                            if (attr.ParameterType == EntityPropertyType.Optional)
+                                continue;
+                            value = attr.AsNull;
+                        }
+                        //GenericTypes.Convert(value, property.PropertyType);
+                        var val = Types.ChangeType(value, property.PropertyType);
+                        args[field] = val;
+
+                        //property.SetValue(instance, Types.ChangeType(value, property.PropertyType), null);
+                        //list.Add(new SqlParameter(field, value));
+
+                        //args[field] = value;
+                    }
+                }
+            }
+
+
+            int count = keyValueParameters.Length;
+            if (count > 0)
+            {
+                if (count % 2 != 0)
+                {
+                    throw new ArgumentException("values parameter not correct, Not match key value arguments");
+                }
+
+                for (int i = 0; i < count; i++)
+                {
+                    string key = keyValueParameters[i].ToString();
+                    object value = keyValueParameters[++i];
+                    args[key] = value;
+                }
+            }
+
+            return args;
+        }
+
+        #endregion
+
         public static object[] EntityToNameValue<T>(this T instance, params string[] Exclude) where T : IEntityItem
         {
             List<object> keyValues = new List<object>();
@@ -522,7 +683,7 @@ namespace Nistec.Data.Entities
 
         public static T ToEntity<T>(string commaString, char splitterList = '|', char spliterKeyValue = '=')
         {
-            var collection= KeyValueUtil.ParseCommaString(commaString, splitterList, spliterKeyValue);
+            var collection = KeyValueUtil.ParseCommaString(commaString, splitterList, spliterKeyValue);
 
             return ToEntity<T>(collection);
         }
@@ -563,7 +724,7 @@ namespace Nistec.Data.Entities
 
             return Create<T>(collection);
         }
-        public static T Create<T>(this NameValueCollection form, bool enableAttributeColumn=false) where T:IEntityItem
+        public static T Create<T>(this NameValueCollection form, bool enableAttributeColumn = false) where T : IEntityItem
         {
 
             T instance = ActivatorUtil.CreateInstance<T>();
@@ -592,7 +753,7 @@ namespace Nistec.Data.Entities
                     if (property.CanWrite)
                     {
 
-                        string field = attr.GetColumn(property.Name, enableAttributeColumn) ;
+                        string field = attr.GetColumn(property.Name, enableAttributeColumn);
                         //if (attr.ParameterType == EntityPropertyType.Optional)
                         //{
                         //    Console.WriteLine("Optional");
@@ -622,13 +783,13 @@ namespace Nistec.Data.Entities
             }
 
             Type type = context.GetType();
-            
+
             if (typeof(IEntityDictionary).IsAssignableFrom(type))
             {
                 return ((IEntityDictionary)context).EntityDictionary();
             }
 
-             return (IDictionary)context;
+            return (IDictionary)context;
         }
 
         public static byte[] EntityAsBinary(object context, Formatters formatter = Formatters.BinarySerializer)
@@ -642,15 +803,15 @@ namespace Nistec.Data.Entities
 
             if (typeof(IEntityDictionary).IsAssignableFrom(type))
             {
-                using(MemoryStream ms=new MemoryStream())
+                using (MemoryStream ms = new MemoryStream())
                 {
-                    ((IEntityDictionary)context).EntityWrite(ms,null);
+                    ((IEntityDictionary)context).EntityWrite(ms, null);
                     return ms.ToArray();
                 }
 
             }
-            
-  
+
+
             return NetSerializer.SerializeBinary(context, formatter);
         }
 

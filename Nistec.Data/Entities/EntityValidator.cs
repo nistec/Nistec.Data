@@ -25,6 +25,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
+using System.Text.RegularExpressions;
 using Nistec.Generic;
 #pragma warning disable CS1591
 namespace Nistec.Data.Entities
@@ -115,6 +116,7 @@ namespace Nistec.Data.Entities
     {
 
         #region Private members
+        const int defaultMaxLength = 999999999;
 
         private string m_name = "";
         private string m_lang = "";
@@ -124,6 +126,8 @@ namespace Nistec.Data.Entities
         private string m_RequiredVar;
         private object m_MinValue;
         private object m_MaxValue;
+        private int m_MinLength=0;
+        private int m_MaxLength= defaultMaxLength;
         private string m_regex;
         //bool m_Exists  = false;
 
@@ -262,6 +266,23 @@ namespace Nistec.Data.Entities
             set { m_MaxValue = value; }
         }
 
+        /// <summary>
+        /// Indicate the parameter min length.
+        /// </summary>
+        public int MinLength
+        {
+            get { return m_MinLength; }
+            set { m_MinLength = value; }
+        }
+
+        /// <summary>
+        /// Indicate the parameter max length.
+        /// </summary>
+        public int MaxLength
+        {
+            get { return m_MaxLength; }
+            set { m_MaxLength = value; }
+        }
         #endregion
 
         #region Is defined properties
@@ -307,6 +328,22 @@ namespace Nistec.Data.Entities
         public bool IsMaxValueDefined
         {
             get { return m_MinValue != null; }
+        }
+
+        /// <summary>
+        /// Is MinValue Defined
+        /// </summary>
+        public bool IsMinLengthDefined
+        {
+            get { return m_MinLength != 0 && !(m_MinLength < 0); }
+        }
+
+        /// <summary>
+        /// Is MaxValue Defined
+        /// </summary>
+        public bool IsMaxLengthDefined
+        {
+            get { return m_MaxLength != defaultMaxLength && !(m_MaxLength < 0) && !(m_MaxLength > defaultMaxLength); }
         }
 
         /// <summary>
@@ -356,7 +393,6 @@ namespace Nistec.Data.Entities
 
     public class EntityValidator
     {
-
         public string Title { get; set; }
         public string Lang { get; private set; }
         public EntityOperation EntityOperation { get; set; }
@@ -365,7 +401,6 @@ namespace Nistec.Data.Entities
         public string RangeFormat { get; set; }
         public string RegexFormat { get; set; }
         public string CrLf { get; set; }
-
         
         public bool IsValid 
         {
@@ -755,6 +790,15 @@ namespace Nistec.Data.Entities
             if (type == typeof(string))
                 ValidateField((string)value, int.MinValue, (int)max, field);
         }
+
+        public void ValidateLength(object value, ValidatorAttribute attr)
+        {
+            if (value == null)
+                return;
+            string field = attr.GetName(Lang);
+            ValidateField(value.ToString(), attr.MinLength, attr.MaxLength, field);
+        }
+
         public void ValidateEntity(object entity,object[] args)
         {
             if (entity == null)
@@ -789,7 +833,12 @@ namespace Nistec.Data.Entities
                     {
                         this.Required(val, attr);
                     }
-                    
+
+                    if (attr.IsMinLengthDefined || attr.IsMaxLengthDefined)
+                    {
+                        this.ValidateLength(val, attr);
+                    }
+ 
                     if (attr.IsRangeDefined)
                     {
                         this.ValidateRange(val, attr.MinValue, attr.MaxValue, attr);
@@ -907,6 +956,23 @@ namespace Nistec.Data.Entities
             validator.EntityOperation = operation;
             validator.ValidateEntity(Entity, args);
             return validator;
+        }
+
+        public static bool ValidateContent(string content, string regexPattern, bool cleanNewLine, bool enableException=true)//, out string result)
+        {
+            if (cleanNewLine)
+            {
+                string NewLine = @"(\r\n)+|\r+|\n+|\t+";
+                content = Regex.Replace(content, NewLine, " ", RegexOptions.IgnoreCase);
+                content = Regex.Replace(content, "\",\"", " ", RegexOptions.IgnoreCase);
+            }
+            Match m = Regex.Match(content, regexPattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            //result = m.Value;
+            if (!m.Success)
+            {
+                throw new EntityException("EntityValidator.Error The Content is not valid");
+            }
+            return m.Success;
         }
     }
 }

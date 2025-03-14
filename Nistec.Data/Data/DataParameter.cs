@@ -1075,6 +1075,8 @@ namespace Nistec.Data
         public static SqlParameter[] GetSqlWithReturnValue(params object[] keyValueParameters)
         {
             List<SqlParameter> list=GetSqlList(keyValueParameters);
+            if (list == null)
+                return null;
             AddReturnValueParameter(list, "ReturnVal");
             return list.ToArray();
         }
@@ -1082,7 +1084,7 @@ namespace Nistec.Data
 
         public static List<T> GetList<T>(params object[] keyValueParameters) where T : IDbDataParameter
         {
-            if (keyValueParameters == null)
+            if (keyValueParameters == null || keyValueParameters.Length == 0)
                 return null;
             int count = keyValueParameters.Length;
             if (count % 2 != 0)
@@ -1110,7 +1112,7 @@ namespace Nistec.Data
 
         public static List<SqlParameter> GetSqlList(params object[] keyValueParameters)
         {
-            if (keyValueParameters == null)
+            if (keyValueParameters == null || keyValueParameters.Length == 0)
                 return null;
             int count = keyValueParameters.Length;
             if (count % 2 != 0)
@@ -1127,6 +1129,22 @@ namespace Nistec.Data
             return list;
         }
 
+        public static void AddToSqlList(IList<SqlParameter> list, params object[] keyValueParameters)
+        {
+            if (keyValueParameters == null || keyValueParameters.Length==0)
+                return;
+            int count = keyValueParameters.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("values parameter not correct, Not match key value arguments");
+            }
+            for (int i = 0; i < count; i++)
+            {
+                var p = new SqlParameter(keyValueParameters[i].ToString(), keyValueParameters[++i]);
+                list.Add(p);
+            }
+        }
+
         public static void AddOutputParameter(List<SqlParameter> list, string name, SqlDbType dbType, int size)
         {
             SqlParameter p = new SqlParameter(name, dbType, size);
@@ -1139,8 +1157,13 @@ namespace Nistec.Data
             p.Direction = ParameterDirection.ReturnValue;
             list.Add(p);
         }
+        public static void AddReturnValueParameter(IList<SqlParameter> list)
+        {
+            SqlParameter p = new SqlParameter("ReturnVal", SqlDbType.Int);
+            p.Direction = ParameterDirection.ReturnValue;
+            list.Add(p);
+        }
 
-       
         public static SqlParameter[] GetSqlWithType(params string[] keyValueTypeParameters)
         {
             if (keyValueTypeParameters == null)
