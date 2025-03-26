@@ -32,7 +32,7 @@ namespace Nistec.Data.Entities.Config
     /// Entities configuration
     /// </summary>
     /// <example>
-    ///<section name="EntitySettings" type="Nistec.Data.Entities.Config.EntityConfig, Nistec.Data, Version=4.6.1.0, Culture=neutral, PublicKeyToken=734a739868a76423" requirePermission="false"/>
+    ///<section name="EntitySettings" type="Nistec.Data.Entities.Config.EntityConfig, Nistec.Data, Version=4.7.2.0, Culture=neutral, PublicKeyToken=734a739868a76423" requirePermission="false"/>
     ///<EntitySettings>
     ///   <Entities>
     ///     <Entity Name="UserProfile" MappingName="UserProfile" ConnectionKey="Default" Mode="Config" SourceType="Table" EntityKey="UserId" LangResources=""/>
