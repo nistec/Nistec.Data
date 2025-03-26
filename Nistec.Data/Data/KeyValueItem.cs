@@ -137,6 +137,9 @@ namespace Nistec.Data
 
     public class KeyValueItem : KeyValueItem<object>, IKeyValueItem //,IEntityItem
     {
+        public KeyValueItem() { }
+        public KeyValueItem(string key, object value) { Key = key;Value = value; }
+
         //public Int64 Index { get; set; }
         public static KeyValueItem Create(DataRow values)
         {
