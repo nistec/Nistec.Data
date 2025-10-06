@@ -24,6 +24,7 @@ using Nistec.Runtime;
 using Nistec.Serialization;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
@@ -169,7 +170,7 @@ namespace Nistec.Data
 
         // DataQuery Extension
 
-        public static List<SqlParameter> ToSqlParametersWithRef<T>(this System.Collections.Specialized.NameValueCollection form, List<string> refList, params object[] keyValueParameters)
+        public static List<SqlParameter> ToSqlParametersWithRef<T>(this NameValueCollection form, List<string> refList, params object[] keyValueParameters)
         {
             List<SqlParameter> list = new List<SqlParameter>();
             Dictionary<string, object> args = ToDictionary<T>(form, keyValueParameters);
@@ -191,7 +192,7 @@ namespace Nistec.Data
             return list;
         }
 
-        public static List<SqlParameter> ToSqlParametersWithReturn<T>(this System.Collections.Specialized.NameValueCollection form, params object[] keyValueParameters)
+        public static List<SqlParameter> ToSqlParametersWithReturn<T>(this NameValueCollection form, params object[] keyValueParameters)
         {
             List<SqlParameter> list = new List<SqlParameter>();
             Dictionary<string, object> args = ToDictionary<T>(form, keyValueParameters);
@@ -206,7 +207,7 @@ namespace Nistec.Data
 
             return list;
         }
-        public static List<SqlParameter> ToSqlParametersWithReturn<T>(this System.Collections.Specialized.NameValueCollection form, string[] exclude, params object[] keyValueParameters)
+        public static List<SqlParameter> ToSqlParametersWithReturn<T>(this NameValueCollection form, string[] exclude, params object[] keyValueParameters)
         {
             List<SqlParameter> list = new List<SqlParameter>();
             Dictionary<string, object> args = ToDictionary<T>(form, keyValueParameters);
@@ -222,7 +223,7 @@ namespace Nistec.Data
 
             return list;
         }
-        public static List<SqlParameter> ToSqlParameters<T>(this System.Collections.Specialized.NameValueCollection form, params object[] keyValueParameters)
+        public static List<SqlParameter> ToSqlParameters<T>(this NameValueCollection form, params object[] keyValueParameters)
         {
             List<SqlParameter> list = new List<SqlParameter>();
             Dictionary<string, object> args = ToDictionary<T>(form, keyValueParameters);
@@ -232,6 +233,37 @@ namespace Nistec.Data
                 list.Add(new SqlParameter(item.Key, item.Value));
             }
             return list;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="form"></param>
+        /// <param name="keyValueParameters"></param>
+        /// <returns></returns>
+        public static object[] ToNameValue<T>(this NameValueCollection form, params object[] keyValueParameters)
+        {
+            if (keyValueParameters.Length > 0 && keyValueParameters.Length % 2 != 0)
+            {
+                throw new ArgumentException("nameValues.Length is incorrect");
+            }
+            Dictionary<string, object> args = ToDictionary<T>(form, keyValueParameters);
+            return args.ToNameValue();
+        }
+
+        public static object[] ToNameValue(this Dictionary<string, object> dictionary)
+        {
+            if (dictionary==null)
+            {
+                throw new ArgumentException("dictionary is null");
+            }
+            List<object> o = new List<object>();
+            foreach (var entry in dictionary)
+            {
+                o.Add(entry.Key);
+                o.Add(entry.Value);
+            }
+            return o.ToArray();
         }
 
         public static Dictionary<string, object> ToDictionary<T>(this System.Collections.Specialized.NameValueCollection form, params object[] keyValueParameters)

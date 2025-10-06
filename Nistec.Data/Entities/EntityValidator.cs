@@ -491,13 +491,13 @@ namespace Nistec.Data.Entities
 
         public void Required(string value, string field)
         {
-            if (Types.IsEmpty(value))
+            if (Types.IsEmpty(value,false))
                 sb.AppendFormat(RequieredFormat+ CrLf,field);
         }
 
         public void Required<T>(T value, string field)
         {
-            if (Types.IsEmpty(value))
+            if (Types.IsEmpty(value,false))
                 sb.AppendFormat(RequieredFormat + CrLf, field);
         }
 
@@ -522,7 +522,7 @@ namespace Nistec.Data.Entities
         }
         public void Required(string value, ValidatorAttribute attr)
         {
-            if (Types.IsEmpty(value))
+            if (Types.IsEmpty(value,false))
             {
                 bool isValid = ValidateOperation(attr);
                 if (!isValid)
@@ -532,7 +532,7 @@ namespace Nistec.Data.Entities
 
         public void Required<T>(T value, ValidatorAttribute attr)
         {
-            if (Types.IsEmpty(value))
+            if (Types.IsEmpty(value,false))
             {
                 bool isValid = ValidateOperation(attr);
                 if (!isValid)
@@ -542,7 +542,7 @@ namespace Nistec.Data.Entities
 
         public void RequiredVar<T>(T value, ValidatorAttribute attr, IDictionary<string, object> reqArgs)
         {
-            if (Types.IsEmpty(value))
+            if (Types.IsEmpty(value,false))
             {
                 if (ValidateRequiredVar(attr, reqArgs))
                 {
@@ -575,7 +575,7 @@ namespace Nistec.Data.Entities
 
         public void RequiredVar<T>(T value, ValidatorAttribute attr, object[] reqArgs)
         {
-            if (Types.IsEmpty(value))
+            if (Types.IsEmpty(value, false))
             {
                 if (ValidateRequiredVar(attr, reqArgs))
                 {
@@ -611,18 +611,18 @@ namespace Nistec.Data.Entities
         }
         public void Validate(string value, string message)
         {
-            if (Types.IsEmpty(value))
+            if (Types.IsEmpty(value, false))
                 sb.AppendFormat(message + CrLf);
         }
 
         public void Validate(int value, string message)
         {
-            if (Types.IsEmpty(value))
+            if (Types.IsEmpty(value, false))
                 sb.AppendFormat(message + CrLf);
         }
         public void Validate(string value, int min, int max, string message)
         {
-            if (Types.IsEmpty(value) || value.Length < min || value.Length > max)
+            if (Types.IsEmpty(value, false) || value.Length < min || value.Length > max)
                 sb.AppendFormat(message + CrLf);
         }
 
@@ -634,27 +634,27 @@ namespace Nistec.Data.Entities
 
         public void ValidateField(int value, int min, int max, string field)
         {
-            if (Types.IsEmpty(value) || value < min || value > max)
+            if (Types.IsEmpty(value, false) || value < min || value > max)
                 sb.AppendFormat(RangeFormat + CrLf, field);
         }
         public void ValidateField(long value, long min, long max, string field)
         {
-            if (Types.IsEmpty(value) || value < min || value > max)
+            if (Types.IsEmpty(value, false) || value < min || value > max)
                 sb.AppendFormat(RangeFormat + CrLf, field);
         }
         public void ValidateField(Int16 value, Int16 min, Int16 max, string field)
         {
-            if (Types.IsEmpty(value) || value < min || value > max)
+            if (Types.IsEmpty(value, false) || value < min || value > max)
                 sb.AppendFormat(RangeFormat + CrLf, field);
         }
         public void ValidateField(byte value, byte min, byte max, string field)
         {
-            if (Types.IsEmpty(value) || value < min || value > max)
+            if (Types.IsEmpty(value, false) || value < min || value > max)
                 sb.AppendFormat(RangeFormat + CrLf, field);
         }
         public void ValidateField(decimal value, decimal min, decimal max, string field)
         {
-            if (Types.IsEmpty(value) || value < min || value > max)
+            if (Types.IsEmpty(value, false) || value < min || value > max)
                 sb.AppendFormat(RangeFormat + CrLf, field);
         }
         public void ValidateField(float value, float min, float max, string field)
@@ -664,13 +664,13 @@ namespace Nistec.Data.Entities
         }
         public void ValidateField(double value, double min, double max, string field)
         {
-            if (Types.IsEmpty(value) || value < min || value > max)
+            if (Types.IsEmpty(value, false) || value < min || value > max)
                 sb.AppendFormat(RangeFormat + CrLf, field);
         }
 
         public void ValidateField(string value, int min, int max, string field)
         {
-            if (Types.IsEmpty(value) || value.Length < min || value.Length > max)
+            if (Types.IsEmpty(value, false) || value.Length < min || value.Length > max)
                 sb.AppendFormat(RangeFormat + CrLf, field);
         }
 
@@ -683,8 +683,11 @@ namespace Nistec.Data.Entities
         public void ValidateRegex(object value, string pattern, ValidatorAttribute attr)
         {
             string field = attr.GetName(Lang);
-            if (Types.IsEmpty(value) || Types.IsEmpty(pattern))
-                sb.AppendFormat(RegexFormat + CrLf, field);
+            if (Types.IsEmpty(value,false) || Types.IsEmpty(pattern, false))
+            {
+                if(attr.Required)
+                    sb.AppendFormat(RegexFormat + CrLf, field);
+            }
             else if(!Regx.RegexValidateIgnoreCase(pattern, value.ToString()))
                 sb.AppendFormat(RegexFormat + CrLf, field);
         }
@@ -958,7 +961,7 @@ namespace Nistec.Data.Entities
             return validator;
         }
 
-        public static bool ValidateContent(string content, string regexPattern, bool cleanNewLine, bool enableException=true)//, out string result)
+        public static bool ValidateContent(string content, string regexPattern, bool cleanNewLine, bool isNotMatch=false)//enableException=true)//, out string result)
         {
             if (cleanNewLine)
             {
@@ -968,7 +971,15 @@ namespace Nistec.Data.Entities
             }
             Match m = Regex.Match(content, regexPattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
             //result = m.Value;
-            if (!m.Success)
+            if(isNotMatch)
+            {
+                if (m.Success)
+                {
+                    throw new EntityException("EntityValidator.Error The Content is not valid");
+                }
+                return !m.Success;
+            }
+            else if (!m.Success)
             {
                 throw new EntityException("EntityValidator.Error The Content is not valid");
             }

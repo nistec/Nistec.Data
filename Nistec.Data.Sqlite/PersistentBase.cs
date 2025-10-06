@@ -129,6 +129,17 @@ namespace Nistec.Data.Sqlite
             }
         }
 
+        public long FileSize(string measure = "kb")
+        {
+            if (measure == "gb")
+                return FileStreamHelper.FileSize(Settings.DbFilename) / 1024 / 1024 / 1024;
+            else if (measure == "mb")
+                return FileStreamHelper.FileSize(Settings.DbFilename) / 1024 / 1024;
+            else if (measure == "kb")
+                return FileStreamHelper.FileSize(Settings.DbFilename) / 1024;
+            else //b
+                return FileStreamHelper.FileSize(Settings.DbFilename);
+        }
 
 
         // /// <summary>
@@ -1788,6 +1799,17 @@ namespace Nistec.Data.Sqlite
                 return list;
             }
         }
+
+        public IList<PersistItem> QueryLabels(string select, string where, params object[] keyValueParameters)
+        {
+            using (var db = new DbLite(ConnectionString, DBProvider.SQLite))
+            {
+                var sql = DbSelectCommand(select, where);
+                var list = db.Query<PersistItem>(sql, keyValueParameters);
+                return list;
+            }
+        }
+        
 
         public IList<T> Query(string select, string where, params object[] keyValueParameters)
         {

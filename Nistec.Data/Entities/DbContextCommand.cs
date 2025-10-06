@@ -1610,6 +1610,13 @@ namespace Nistec.Data.Entities
                     }
                     return (T)result;
                 }
+                else if (SerializeTools.IsEntityClass(type))
+                {
+                    DataTable dt = ExecuteDataTable(cmd, mappingName, addWithKey);
+                    if (dt != null && dt.Rows.Count > 0)
+                        return dt.Rows[0].ToEntity<T>();
+                    return (T)result;
+                }
                 else //if (type == typeof(object))
                 {
                     result = cmd.ExecuteScalar();

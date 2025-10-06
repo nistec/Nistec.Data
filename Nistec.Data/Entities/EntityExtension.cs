@@ -681,6 +681,86 @@ namespace Nistec.Data.Entities
             return keyValues.ToArray();
         }
 
+        public static object[] EntityToNameValue<T>(this T instance,object[] nameValue, params string[] Exclude) where T : IEntityItem
+        {
+            List<object> keyValues = new List<object>();
+
+            if (nameValue != null && nameValue.Length > 0 && nameValue.Length % 2 == 0)
+            {
+                keyValues.AddRange(nameValue);
+            }
+
+            var props = DataProperties.GetEntityProperties(typeof(T));
+            //props = props.Where(p => p.Attribute.Order > 0).OrderBy(p => p.Attribute.Order);
+
+            foreach (var pa in props)
+            {
+                PropertyInfo property = pa.Property;
+                EntityPropertyAttribute attr = pa.Attribute;
+                if (!Exclude.Contains(property.Name))
+                {
+                    if (attr != null)
+                    {
+                        if (attr.ParameterType == EntityPropertyType.NA || attr.ParameterType == EntityPropertyType.View)
+                            continue;
+
+
+                        string key = attr.GetParamName(pa.Property.Name);//attr.IsColumnDefined ? attr.Column : pa.Property.Name;
+                        object val = property.GetValue(instance, null);
+
+                        keyValues.Add(key);
+                        keyValues.Add(val);
+
+                    }
+                    else
+                    {
+                        keyValues.Add(property.Name);
+                        keyValues.Add(property.GetValue(instance, null));
+                    }
+                }
+            }
+            return keyValues.ToArray();
+        }
+        public static GenericKeyValue EntityToNameValue<T>(this NameValueCollection form, params string[] Exclude) where T : IEntityItem
+        {
+            //List<object> keyValues = new List<object>();
+            GenericKeyValue keyValues = new GenericKeyValue();
+
+            var props = DataProperties.GetEntityProperties(typeof(T));
+            //props = props.Where(p => p.Attribute.Order > 0).OrderBy(p => p.Attribute.Order);
+
+            foreach (var pa in props)
+            {
+                PropertyInfo property = pa.Property;
+                EntityPropertyAttribute attr = pa.Attribute;
+                if (!Exclude.Contains(property.Name))
+                {
+                    if (!property.CanRead)
+                    {
+                        continue;
+                    }
+                    if (property.CanWrite)
+                    {
+                        if (attr != null)
+                        {
+                            if (attr.ParameterType == EntityPropertyType.NA || attr.ParameterType == EntityPropertyType.View)
+                                continue;
+                            string key = attr.GetParamName(pa.Property.Name);
+                            object val = form.Get(property.Name);
+                            if (val == null)
+                            {
+                                val = GenericTypes.Default(property.GetType());
+                            }
+                            keyValues.Add(key,val);
+                            //keyValues.Add(key);
+                            //keyValues.Add(val);
+                        }
+                    }
+                }
+            }
+            return keyValues;//.ToKeyValueArray();
+        }
+ 
         public static T ToEntity<T>(string commaString, char splitterList = '|', char spliterKeyValue = '=')
         {
             var collection = KeyValueUtil.ParseCommaString(commaString, splitterList, spliterKeyValue);
@@ -717,6 +797,7 @@ namespace Nistec.Data.Entities
 
             return instance;
         }
+
 
         public static T Create<T>(string commaString, char splitterList = '|', char spliterKeyValue = '=', bool enableAttributeColumn = false) where T : IEntityItem
         {

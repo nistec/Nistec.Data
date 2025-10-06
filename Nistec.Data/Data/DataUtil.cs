@@ -536,6 +536,90 @@ namespace Nistec.Data
             }
         }
 
+        ///// <summary>
+        ///// FillDataTable
+        ///// </summary>
+        ///// <param name="rows">columnName,Value</param>
+        //public static DataTable ToDataTable(IEnumerable<IEnumerable<KeyValuePair<string, object>>> rows)
+        //{
+        //    DataTable dt = new DataTable();
+        //    int i = 0;
+        //    DataRow rowx = null;
+        //    //int rowLength = rows.Length;
+        //    foreach (var row in rows)
+        //    {
+        //        //var drowx = ((IEnumerable<object>)row.Value).ToArray().Cast<IEnumerable<KeyValuePair<string, object>>>();
+        //        foreach (var rx in rows)
+        //        {
+        //            if (i == 0)
+        //            {
+        //                foreach (var elm in rx)
+        //                    dt.Columns.Add(elm.Key);
+        //            }
+        //            rowx = dt.NewRow();
+        //            foreach (var elm in rx)
+        //                rowx[elm.Key] = elm.Value;
+
+        //            dt.Rows.Add(rowx);
+        //            i++;
+        //        }
+        //    }
+        //    return dt;
+        //}
+
+
+        /// <summary>
+        /// Convert KeyValuePair to DataTable
+        /// </summary>
+        /// <param name="rows"></param>
+        /// <returns></returns>
+        public static DataTable ToDataTable(IEnumerable<KeyValuePair<string, object>> rows)
+        {
+            //var dic1 = Nistec.Serialization.JsonSerializer.Deserialize<Dictionary<string, object>>(fileContents);
+            //var rows = dic1.Where(x => x.Key == "value");
+
+
+            DataTable dt = new DataTable();
+            int i = 0;
+            DataRow rowx = null;
+            foreach (var row in rows)
+            {
+                var drowx = ((IEnumerable<object>)row.Value).ToArray().Cast<IEnumerable<KeyValuePair<string, object>>>();
+                foreach (var rx in drowx)
+                {
+                    if (i == 0)
+                    {
+                        foreach (var elm in rx)
+                            dt.Columns.Add(elm.Key);
+                    }
+                    rowx = dt.NewRow();
+                    foreach (var elm in rx)
+                        rowx[elm.Key] = elm.Value;
+
+                    dt.Rows.Add(rowx);
+                    i++;
+                }
+
+                //var drow = ((IEnumerable<object>)row.Value).ToArray();
+                //for (int j = 0; j < drow.Count(); j++)
+                //{
+                //    var elements = (IEnumerable<KeyValuePair<string, object>>)drow.ElementAt(j);
+                //    if (i == 0)
+                //    {
+                //        foreach (var elm in elements)
+                //            dt.Columns.Add(elm.Key);
+                //    }
+                //    rowx = dt.NewRow();
+                //    foreach (var elm in elements)
+                //        rowx[elm.Key] = elm.Value;
+
+                //    dt.Rows.Add(rowx);
+                //    i++;
+                //}
+            }
+            return dt;
+        }
+
         /// <summary>
         /// FillDataTable
         /// </summary>

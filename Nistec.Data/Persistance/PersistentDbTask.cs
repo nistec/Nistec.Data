@@ -13,7 +13,7 @@ namespace Nistec.Data.Persistance
 
     public class TaskerDb : QueueListener<PersistentDbTask>
     {
-        public static readonly TaskerDb Queue = new TaskerDb();
+        public static readonly TaskerDb TaskQueue = new TaskerDb();
 
         //protected override void OnMessageArraived(Generic.GenericEventArgs<TaskPersistance> e)
         //{
@@ -42,7 +42,7 @@ namespace Nistec.Data.Persistance
         {
             //TaskItem item = new TaskItem(() => Execute(), 0);
             if (enableTasker)
-                TaskerDb.Queue.Enqueue(this);
+                TaskerDb.TaskQueue.Enqueue(this);
             else
                 ExecuteAsync();
         }
