@@ -902,6 +902,10 @@ namespace Nistec.Data.Entities
                 return;
             }
             var map= EntityMappingAttribute.Get<T>();
+            if (map == null)
+            {
+                throw new EntityException("Validate Error: Invalid EntityMappingAttribute");
+            }
             string title = map.EntityName;// ?? map.MappingName;
             EntityValidator validator = new EntityValidator(title, map.Lang);
             validator.ValidateEntity(Entity, args);

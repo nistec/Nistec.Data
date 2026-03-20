@@ -99,6 +99,7 @@
     <Compile Include="Ado\ConnectionProvider.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Advanced\SqlReader.cs" />
     <Compile Include="Advanced\LookupView.cs">
       <SubType>Code</SubType>
     </Compile>
